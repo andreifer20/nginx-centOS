@@ -1,0 +1,63 @@
+#!/bin/bash 
+
+mkdir -p /root/rpm/nginx
+
+tar -xvf nginx.tar.gz --directory /root/rpm/ && sleep 2 && \
+
+sleep 2
+
+cd /root/rpm/nginx/
+tar -xvf nginx-1.12.2.tar.gz && \
+tar -xvf openssl-1.1.0h.tar.gz && \
+tar -xvf pcre-8.42.tar.gz && \
+tar -xvf zlib-1.2.11.tar.gz
+
+yum -y install gcc gcc-c++ make
+yum install -y /root/rpm/nginx/*.rpm
+
+
+cd /root/rpm/nginx/nginx-1.12.2 && \
+./configure   --prefix=/opt/nginx 
+--with-http_ssl_module \
+--with-http_v2_module  \
+--with-http_realip_module \
+--with-ipv6 \
+--with-threads \
+--with-stream \
+--with-stream_ssl_module \
+--with-mail \
+--with-mail_ssl_module \
+--with-stream_ssl_preread_module \
+--with-openssl=../openssl-1.1.0h \
+--with-pcre=../pcre-8.42 --with-zlib=../zlib-1.2.11 --user=nginx \
+--group=nginx && \
+make && \
+make install
+
+
+
+
+cat << "EOF" > /etc/systemd/system/nginx.service
+[Unit]
+Description=Nginx Service
+After=syslog.target network.target remote-fs.target nss-lookup.target
+
+[Service]
+Type=forking
+PIDFile=/opt/nginx/logs/nginx.pid
+#PIDFile=/run/nginx.pid
+ExecStartPre=/opt/nginx/sbin/nginx -t
+ExecStart=/opt/nginx/sbin/nginx
+ExecReload=/bin/kill -s HUP $MAINPID
+ExecStop=/bin/kill -s QUIT $MAINPID
+PrivateTmp=true
+ 
+[Install]
+WantedBy=multi-user.target
+EOF
+
+
+systemctl start nginx.service && systemctl enable nginx.service
+
+
+
